@@ -7,71 +7,65 @@ PROJECT_DATA: dict = {
         "temporales que, si se identifican correctamente mediante minería de datos, permiten "
         "anticipar focos de riesgo y actuar antes de que ocurran los delitos."
     ),
-    "afectados": [
-        {
-            "icono": "🏨",
-            "titulo": "Hoteles y cadenas hoteleras",
-            "descripcion": "Pierden ingresos por habitaciones no ocupadas y deben aplicar overbooking riesgoso.",
+  "afectados": [
+            {"titulo": "Ciudadanos", 
+             "descripcion": "Son las principales víctimas de la inseguridad urbana, viendo afectada su calidad de vida, movilidad y bienestar."},
+            { "titulo": "Cuerpos policiales",
+             "descripcion": "Necesitan distribuir patrullajes y recursos de forma inteligente para maximizar la prevención del delito."},
+            {"titulo": "Alcaldías y gobiernos locales",
+             "descripcion": "Son responsables de las políticas públicas de seguridad y deben justificar inversiones con datos concretos."},
+            {"titulo": "Investigadores y analistas",
+             "descripcion": "Requieren datos abiertos y modelos predictivos para estudiar la dinámica criminal y proponer soluciones basadas en evidencia."},
+        ],
+  "contexto": 
+         "La distribución del crimen en entornos urbanos sigue patrones espaciales y temporales identificables. Estudios de criminología ambiental demuestran que ciertos vecindarios, horarios y tipos de delito se agrupan de forma consistente. Con el crecimiento de las ciudades y la disponibilidad de datos abiertos de crimen, la minería de datos se convierte en una herramienta clave para transformar enormes volúmenes de reportes policiales en conocimiento accionable que guíe estrategias de prevención del delito.",
+         
+   "empresa": {
+            "nombre": "Departamentos de Policía ",
+            "descripcion": "Los datasets provienen de los portales de datos abiertos de los departamentos de policía de Chicago (Chicago Data Portal) y Los Ángeles (LA Open Data). Ambas ciudades publican reportes de crimen en tiempo real con información geoespacial, tipo de delito, fecha, localización y resolución del caso, como parte de sus compromisos de transparencia gubernamental.",
         },
-        {
-            "icono": "👤",
-            "titulo": "Huéspedes",
-            "descripcion": "Son reubicados por overbooking, afectando su experiencia y confianza.",
+   
+      "dataset": {
+            "nombre": "Chicago Crime Dataset / LA Crime Data",
+            "registros": "+7,000,000 registros (Chicago desde 2001)",
+            "variables": "22 columnas (tipo delito, fecha, coordenadas, barrio, etc.)",
+            "fuente": "Kaggle / Chicago Data Portal",
+            "url": "https://www.kaggle.com/datasets/chicago/chicago-crime",
+            "formato": "CSV / GeoJSON",
+            "periodo": "2001 – Presente",
         },
-        {
-            "icono": "✈️",
-            "titulo": "Agencias de viaje y OTAs",
-            "descripcion": "Booking.com, Expedia y similares ven afectados sus modelos de comisión.",
-        },
-        {
-            "icono": "👷",
-            "titulo": "Personal hotelero",
-            "descripcion": "Su carga laboral se planifica con base en ocupación esperada incorrecta.",
-        },
-    ],
-    "contexto": (
-        "Entre 2015 y 2017, la tasa promedio de cancelaciones en Europa superó el 40% en "
-        "plataformas digitales. Con el auge de las reservas online y las políticas de cancelación "
-        "gratuita, los clientes reservan en múltiples hoteles simultáneamente y cancelan al último "
-        "momento. Esto genera una inestabilidad operativa y financiera enorme para los establecimientos."
-    ),
-    "empresa": {
-        "nombre": "Hoteles de Portugal (Dataset Académico)",
-        "descripcion": (
-            "El dataset proviene de dos hoteles reales de Portugal: un hotel urbano en Lisboa y un "
-            "resort en el Algarve. Los datos fueron anonimizados y publicados por Nuno António, "
-            "Ana de Almeida y Luis Nunes (2019), luego popularizados a través de plataformas de "
-            "datos abiertos."
-        ),
-    },
-    "dataset": {
-        "nombre": "Hotel Booking Demand Dataset",
-        "registros": "~119,000 reservas",
-        "variables": "32 columnas",
-        "fuente": "Kaggle",
-        "url": "https://www.kaggle.com/datasets/jessemostipak/hotel-booking-demand",
-        "formato": "CSV",
-        "periodo": "Julio 2015 – Agosto 2017",
-    },
-    "tecnicas": [
-        {
-            "nombre": "Clasificación",
-            "desc": "Predecir si una reserva será cancelada (variable objetivo: is_canceled).",
-        },
-        {
-            "nombre": "Clustering",
-            "desc": "Segmentar perfiles de clientes con mayor propensión a cancelar.",
-        },
-        {
-            "nombre": "Reglas de Asociación",
-            "desc": (
-                "Identificar patrones como reservas anticipadas + sin depósito + canal OTA → "
-                "alta probabilidad de cancelación."
-            ),
-        },
-        {
-            "nombre": "Series Temporales",
-            "desc": "Detectar épocas del año con mayor tasa de cancelación.",
-        },
-    ],
+
+    # "tecnicas": [
+    #     {
+    #         # Técnica de Clasificación: Algoritmos supervisados (Árboles de Decisión, 
+    #         # Logistic Regression, Random Forest) que aprenden patrones de reservas 
+    #         # canceladas vs. confirmadas para predecir nuevas cancelaciones.
+    #         "nombre": "Clasificación",
+    #         "desc": "Predecir si una reserva será cancelada (variable objetivo: is_canceled).",
+    #     },
+    #     {
+    #         # Técnica de Clustering: Agrupa clientes en segmentos similares sin variable 
+    #         # objetivo (aprendizaje no supervisado). Identifica qué tipos de clientes 
+    #         # cancelen más (ej: grupos de alto/bajo riesgo de cancelación).
+    #         "nombre": "Clustering",
+    #         "desc": "Segmentar perfiles de clientes con mayor propensión a cancelar.",
+    #     },
+    #     {
+    #         # Técnica de Reglas de Asociación: Busca relaciones entre variables 
+    #         # (si A ocurre, entonces B es probable). Útil para descubrir patrones 
+    #         # ocultos que predicen comportamientos sin necesidad de supervisión.
+    #         "nombre": "Reglas de Asociación",
+    #         "desc": (
+    #             "Identificar patrones como reservas anticipadas + sin depósito + canal OTA → "
+    #             "alta probabilidad de cancelación."
+    #         ),
+    #     },
+    #     {
+    #         # Técnica de Series Temporales: Analiza datos ordenados en el tiempo 
+    #         # para detectar tendencias, estacionalidad y patrones cíclicos. 
+    #         # Ideal para predecir comportamientos futuros basados en historiales pasados.
+    #         "nombre": "Series Temporales",
+    #         "desc": "Detectar épocas del año con mayor tasa de cancelación.",
+    #     },
+    # ],
 }

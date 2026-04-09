@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{{ proyecto.titulo }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}"/>
+</head>
+<body>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-tag">Minería de Datos · Proyecto Gestión de Conocimiento</div>
+    <h1>{{ proyecto.titulo }}<br><span>Urbana</span></h1>
+    <p class="hero-sub">
+      Un análisis basado en minería de datos para identificar zonas de alta peligrosidad, anticipar delitos
+      y detectar patrones de criminalidad.
+    </p>
+    <div class="hero-scroll">Explorar proyecto</div>
+  </section>
+
+  <main>
+
+    <!-- PROBLEMA -->
+    <div class="section">
+      <p class="section-label">01 — El Problema</p>
+      <h2 class="section-title">¿Qué está fallando en la<br> seguridad de zonas urbanas?</h2>
+      <p class="section-body">{{ proyecto.problema }}</p>
+    </div>
+
+    <!-- AFECTADOS -->
+    <div class="section">
+      <p class="section-label">02 — Actores Involucrados</p>
+      <h2 class="section-title">¿Quiénes son<br>los afectados?</h2>
+      <div class="afectados-grid">
+        {% for a in proyecto.afectados %}
+        <div class="afectado-card">
+          <div class="afectado-icono">{{ a.icono }}</div>
+          <div class="afectado-titulo">{{ a.titulo }}</div>
+          <div class="afectado-desc">{{ a.descripcion }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- CONTEXTO -->
+    <div class="section">
+      <p class="section-label">03 — Contexto</p>
+      <h2 class="section-title">El panorama de<br>la criminalidad</h2>
+      <p class="section-body">{{ proyecto.contexto }}</p>
+    </div>
+
+    <!-- EMPRESA -->
+    <div class="section">
+      <p class="section-label">04 — Origen del Estudio</p>
+      <h2 class="section-title">¿De dónde provienen<br>los datos?</h2>
+      <div class="empresa-card">
+        <h3>{{ proyecto.empresa.nombre }}</h3>
+        <p>{{ proyecto.empresa.descripcion }}</p>
+      </div>
+    </div>
+
+    <!-- DATASET -->
+    <div class="section">
+      <p class="section-label">05 — Dataset</p>
+      <h2 class="section-title">Ficha técnica<br>del conjunto de datos</h2>
+      <div class="dataset-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Característica</th>
+              <th>Detalle</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Nombre</td><td>{{ proyecto.dataset.nombre }}</td></tr>
+            <tr><td>Registros</td><td>{{ proyecto.dataset.registros }}</td></tr>
+            <tr><td>Variables</td><td>{{ proyecto.dataset.variables }}</td></tr>
+            <tr><td>Formato</td><td>{{ proyecto.dataset.formato }}</td></tr>
+            <tr><td>Periodo</td><td>{{ proyecto.dataset.periodo }}</td></tr>
+            <tr>
+              <td>Fuente</td>
+              <td>
+                <a class="dataset-link"
+                   href="{{ proyecto.dataset.url }}"
+                   target="_blank"
+                   rel="noopener noreferrer">
+                  {{ proyecto.dataset.fuente }} → Ver dataset
+                </a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TÉCNICAS -->
+    <div class="section">
+      <p class="section-label">06 — Minería de Datos</p>
+      <h2 class="section-title">Técnicas a aplicar<br>en el proyecto</h2>
+      <div class="tecnicas-grid">
+        {% for t in proyecto.tecnicas %}
+        <div class="tecnica-item">
+          <div class="tecnica-num">0{{ loop.index }}</div>
+          <div class="tecnica-nombre">{{ t.nombre }}</div>
+          <div class="tecnica-desc">{{ t.desc }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </main>
+
+  <footer>
+    Proyecto de Minería de Datos · <span>{{ proyecto.titulo }}</span>
+  </footer>
+
+  <script>
+    const sections = document.querySelectorAll('.section');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+          observer.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.1 });
+    sections.forEach(s => observer.observe(s));
+  </script>
+
+</body>
+</html>

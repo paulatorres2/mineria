@@ -11,3 +11,5 @@ services:
         generateValue: true
       - key: PYTHON_VERSION
         value: "3.12"
+      - key: MOTHERDUCK_TOKEN
+        sync: false

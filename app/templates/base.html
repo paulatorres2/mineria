@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}Minería de Datos{% endblock %}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}"/>
+</head>
+<body>
+
+  <nav class="navbar">
+    <a class="navbar-brand" href="{{ url_for('main.index') }}">Minería de Datos</a>
+    <input type="checkbox" id="nav-toggle" class="nav-toggle" />
+    <label for="nav-toggle" class="nav-hamburger" aria-label="Menú">
+      <span></span><span></span><span></span>
+    </label>
+    <ul class="nav-links">
+      <li>
+        <a href="{{ url_for('main.index') }}"
+           class="nav-link{% if request.endpoint and request.endpoint.startswith('main.') %} active{% endif %}">
+          Inicio
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('nivel_1.index') }}"
+           class="nav-link{% if request.endpoint and request.endpoint.startswith('nivel_1.') %} active{% endif %}">
+          Nivel 1 — Evidente
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('nivel_2.index') }}"
+           class="nav-link{% if request.endpoint and request.endpoint.startswith('nivel_2.') %} active{% endif %}">
+          Nivel 2 — Multidimensional
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('nivel_3.index') }}"
+           class="nav-link{% if request.endpoint and request.endpoint.startswith('nivel_3.') %} active{% endif %}">
+          Nivel 3 — Oculto
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('nivel_4.index') }}"
+           class="nav-link{% if request.endpoint and request.endpoint.startswith('nivel_4.') %} active{% endif %}">
+          Nivel 4 — Profundo
+        </a>
+      </li>
+    </ul>
+  </nav>
+
+  {% block content %}{% endblock %}
+
+  <footer>
+    Proyecto de Minería de Datos · <span>Análisis de Crimen y Seguridad</span>
+  </footer>
+
+  {% block scripts %}{% endblock %}
+
+</body>
+</html>

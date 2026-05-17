@@ -1,27 +1,20 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>{{ proyecto.titulo }}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}"/>
-</head>
-<body>
+{% extends "base.html" %}
+
+{% block title %}{{ proyecto.titulo }}{% endblock %}
+
+{% block content %}
 
   <!-- HERO -->
   <section class="hero">
     <div class="hero-tag">Minería de Datos · Proyecto Gestión de Conocimiento</div>
-    <h1>{{ proyecto.titulo }}<br><span>Urbana</span></h1>
+    <h1>{{ proyecto.titulo }}<br><span>Colombia</span></h1>
     <p class="hero-sub">
       Un análisis basado en minería de datos para identificar zonas de alta peligrosidad, anticipar delitos
       y detectar patrones de criminalidad.
     </p>
-    <div class="hero-scroll">Explorar proyecto</div>
   </section>
 
   <main>
-
     <!-- PROBLEMA -->
     <div class="section">
       <p class="section-label">01 — El Problema</p>
@@ -95,39 +88,21 @@
       </div>
     </div>
 
-    <!-- TÉCNICAS
-    <div class="section">
-      <p class="section-label">06 — Minería de Datos</p>
-      <h2 class="section-title">Técnicas a aplicar<br>en el proyecto</h2>
-      <div class="tecnicas-grid">
-        {% for t in proyecto.tecnicas %}
-        <div class="tecnica-item">
-          <div class="tecnica-num">0{{ loop.index }}</div>
-          <div class="tecnica-nombre">{{ t.nombre }}</div>
-          <div class="tecnica-desc">{{ t.desc }}</div>
-        </div>
-        {% endfor %}
-      </div>
-    </div> -->
-
   </main>
 
-  <footer>
-    Proyecto de Minería de Datos · <span>{{ proyecto.titulo }}</span>
-  </footer>
+{% endblock %}
 
-  <script>
-    const sections = document.querySelectorAll('.section');
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(e => {
-        if (e.isIntersecting) {
-          e.target.classList.add('visible');
-          observer.unobserve(e.target);
-        }
-      });
-    }, { threshold: 0.1 });
-    sections.forEach(s => observer.observe(s));
-  </script>
-
-</body>
-</html>
+{% block scripts %}
+<script>
+  const sections = document.querySelectorAll('.section');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.1 });
+  sections.forEach(s => observer.observe(s));
+</script>
+{% endblock %}

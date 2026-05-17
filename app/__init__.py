@@ -8,7 +8,16 @@ def create_app(config_class: type[Config] = DevelopmentConfig) -> Flask:
     app.config.from_object(config_class)
 
     from app.main import main_bp
+    from app.nivel_1 import nivel_1_bp
+    from app.nivel_2 import nivel_2_bp
+    from app.nivel_3 import nivel_3_bp
+    from app.nivel_4 import nivel_4_bp
+
     app.register_blueprint(main_bp)
+    app.register_blueprint(nivel_1_bp)
+    app.register_blueprint(nivel_2_bp)
+    app.register_blueprint(nivel_3_bp)
+    app.register_blueprint(nivel_4_bp)
 
     _register_error_handlers(app)
 

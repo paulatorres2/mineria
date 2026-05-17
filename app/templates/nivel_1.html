@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Nivel 1 — {{ nivel.titulo }}{% endblock %}
+
+{% block content %}
+
+  <section class="nivel-hero">
+    <div class="nivel-tag">{{ nivel.color_tag }}</div>
+    <h1>Nivel <span>01</span> —<br>{{ nivel.titulo }}</h1>
+    <p>{{ nivel.descripcion }}</p>
+  </section>
+
+  <main>
+    <div class="section visible">
+      <p class="section-label">Herramienta</p>
+      <h2 class="section-title">{{ nivel.herramienta }}</h2>
+      <p class="section-body">
+        El dashboard interactivo de Power BI integra los datos de homicidios del MinDefensa y
+        permite explorar KPIs, tendencias temporales y distribución geográfica del crimen
+        mediante filtros dinámicos.
+      </p>
+    </div>
+  </main>
+
+  <section class="dash-body">
+    <iframe
+      title="Homicidios-Mineria-Datos"
+      src="https://app.powerbi.com/view?r=eyJrIjoiMTljZjFjZDUtM2FiOS00MzM4LTlhM2YtYzk0OWM4MDZlZjgzIiwidCI6IjA3ZGE2N2EwLTFmNDMtNGU4Yy05NzdmLTVmODhiNjQ3MGVlNiIsImMiOjR9"
+      frameborder="0"
+      allowfullscreen="true">
+    </iframe>
+  </section>
+
+{% endblock %}

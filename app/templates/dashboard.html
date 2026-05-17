@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard · {{ nivel.titulo }}{% endblock %}
+
+{% block content %}
+  <section class="dash-body">
+    <iframe
+      title="Homicidios-Mineria-Datos"
+      src="https://app.powerbi.com/view?r=eyJrIjoiMTljZjFjZDUtM2FiOS00MzM4LTlhM2YtYzk0OWM4MDZlZjgzIiwidCI6IjA3ZGE2N2EwLTFmNDMtNGU4Yy05NzdmLTVmODhiNjQ3MGVlNiIsImMiOjR9"
+      frameborder="0"
+      allowfullscreen="true">
+    </iframe>
+  </section>
+{% endblock %}

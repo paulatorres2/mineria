@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+
+{% block title %}Nivel 2 — {{ nivel.titulo }}{% endblock %}
+
+{% block content %}
+
+  <section class="nivel-hero">
+    <div class="nivel-tag">{{ nivel.color_tag }}</div>
+    <h1>Nivel <span>02</span> —<br>{{ nivel.titulo }}</h1>
+    <p>{{ nivel.descripcion }}</p>
+  </section>
+
+  <main>
+
+    <!-- SECTION 1: Herramienta + SEMMA -->
+    <div class="section visible">
+      <p class="section-label">Herramienta</p>
+      <h2 class="section-title">{{ nivel.herramienta }}</h2>
+      <p class="section-body">
+        El modelo multidimensional transforma el dataset plano en un esquema estrella con una
+        tabla de hechos central y cuatro dimensiones normalizadas: Tiempo, Ubicación, Arma y Modalidad.
+        Las consultas OLAP permiten cruzar estas dimensiones para revelar patrones no visibles
+        en vistas unidimensionales. La metodología SEMMA guía cada fase del proceso.
+      </p>
+
+      <div class="semma-strip">
+        {% for fase in nivel.semma %}
+        <div class="semma-fase">
+          <div class="semma-letra">{{ fase.fase[0] }}</div>
+          <div class="semma-nombre">{{ fase.fase }}</div>
+          <div class="semma-desc">{{ fase.descripcion }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- SECTION 2: Star schema diagram -->
+    <div class="section">
+      <p class="section-label">Esquema Estrella</p>
+      <h2 class="section-title">Modelo<br>Multidimensional</h2>
+      <p class="section-body">
+        Cuatro dimensiones normalizadas rodean la tabla de hechos central,
+        permitiendo consultas analíticas eficientes con mínima redundancia de datos.
+      </p>
+
+      <div class="star-diagram">
+        <!-- Top: dim_tiempo -->
+        <div class="star-row star-row--top">
+          <div class="star-dim star-dim--top {{ nivel.dimensiones[0].color_class }}">
+            <div class="star-dim-name">{{ nivel.dimensiones[0].nombre }}</div>
+            {% for campo in nivel.dimensiones[0].campos %}
+            <div class="star-dim-field">{{ campo }}</div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Middle row: dim_ubicacion | fact | dim_arma -->
+        <div class="star-middle">
+          <div class="star-dim star-dim--left {{ nivel.dimensiones[1].color_class }}">
+            <div class="star-dim-name">{{ nivel.dimensiones[1].nombre }}</div>
+            {% for campo in nivel.dimensiones[1].campos %}
+            <div class="star-dim-field">{{ campo }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="star-fact">
+            <div class="star-fact-name">{{ nivel.fact_table.nombre }}</div>
+            {% for campo in nivel.fact_table.campos %}
+            <div class="star-fact-field">{{ campo }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="star-dim star-dim--right {{ nivel.dimensiones[2].color_class }}">
+            <div class="star-dim-name">{{ nivel.dimensiones[2].nombre }}</div>
+            {% for campo in nivel.dimensiones[2].campos %}
+            <div class="star-dim-field">{{ campo }}</div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Bottom: dim_modalidad -->
+        <div class="star-row star-row--bottom">
+          <div class="star-dim star-dim--bottom {{ nivel.dimensiones[3].color_class }}">
+            <div class="star-dim-name">{{ nivel.dimensiones[3].nombre }}</div>
+            {% for campo in nivel.dimensiones[3].campos %}
+            <div class="star-dim-field">{{ campo }}</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTIONS 3–6: One per analytical query -->
+    {% for consulta in nivel.consultas %}
+    <div class="section">
+      <p class="section-label">{{ consulta.label }}</p>
+      <h2 class="section-title">{{ consulta.titulo }}</h2>
+      <p class="section-body">{{ consulta.descripcion }}</p>
+
+      {% if consulta.id != 'por_departamento_anio' %}
+      <div class="viz-row">
+        <div class="chart-wrap">
+          <canvas id="chart-{{ consulta.id }}"></canvas>
+        </div>
+        <div class="dataset-wrap">
+          {% set filas = resultados[consulta.id] %}
+          {% if filas %}
+          <div class="query-wrap">
+            <table class="query-table">
+              <thead>
+                <tr>
+                  {% for col in consulta.columnas %}
+                  <th>{{ col }}</th>
+                  {% endfor %}
+                </tr>
+              </thead>
+              <tbody>
+                {% for fila in filas %}
+                <tr>
+                  {% for campo in consulta.campos %}
+                  <td{% if loop.last %} class="num"{% endif %}>{{ fila[campo] }}</td>
+                  {% endfor %}
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <p class="query-empty">No hay datos disponibles para esta consulta.</p>
+          {% endif %}
+        </div>
+      </div>
+      {% else %}
+      <div class="dataset-wrap">
+        {% set filas = resultados[consulta.id] %}
+        {% if filas %}
+        <div class="query-wrap">
+          <table class="query-table">
+            <thead>
+              <tr>
+                {% for col in consulta.columnas %}
+                <th>{{ col }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for fila in filas %}
+              <tr>
+                {% for campo in consulta.campos %}
+                <td{% if loop.last %} class="num"{% endif %}>{{ fila[campo] }}</td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="query-empty">No hay datos disponibles para esta consulta.</p>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+  </main>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+  /* ── Scroll-reveal ── */
+  const sections = document.querySelectorAll('.section');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); }
+    });
+  }, { threshold: 0.1 });
+  sections.forEach(s => observer.observe(s));
+
+  /* ── Table paginator ── */
+  const PAGE_SIZE = 20;
+
+  document.querySelectorAll('.query-table').forEach(table => {
+    const rows = Array.from(table.querySelectorAll('tbody tr'));
+    if (rows.length <= PAGE_SIZE) return;
+
+    const total      = rows.length;
+    const totalPages = Math.ceil(total / PAGE_SIZE);
+    let   page       = 0;
+
+    const wrap = table.closest('.query-wrap');
+    const ctrl = document.createElement('div');
+    ctrl.className = 'tpag';
+
+    const prev = document.createElement('button');
+    prev.className = 'tpag-btn';
+    prev.textContent = '←';
+    prev.title = 'Anterior';
+
+    const info = document.createElement('span');
+    info.className = 'tpag-info';
+
+    const next = document.createElement('button');
+    next.className = 'tpag-btn';
+    next.textContent = '→';
+    next.title = 'Siguiente';
+
+    ctrl.append(prev, info, next);
+    wrap.appendChild(ctrl);
+
+    function show(p) {
+      page = p;
+      rows.forEach((r, i) => {
+        r.style.display = (i >= p * PAGE_SIZE && i < (p + 1) * PAGE_SIZE) ? '' : 'none';
+      });
+      prev.disabled = page === 0;
+      next.disabled = page === totalPages - 1;
+      info.textContent =
+        'Página ' + (page + 1) + ' de ' + totalPages + ' · ' + total + ' registros';
+    }
+
+    prev.addEventListener('click', () => show(page - 1));
+    next.addEventListener('click', () => show(page + 1));
+    show(0);
+  });
+
+  /* ── Charts ── */
+  const BLUE = '#0d89a1';
+  const RUST = '#d38976';
+  const GRAY = '#3d373a';
+
+  function baseOpts() {
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: GRAY } } },
+      scales: {
+        x: { ticks: { color: GRAY }, grid: { color: '#37637022' } },
+        y: { ticks: { color: GRAY }, grid: { color: '#37637022' } },
+      },
+    };
+  }
+
+  /* Tendencia mensual — line */
+  {%- set tm = resultados['tendencia_mensual'] %}
+  {%- if tm %}
+  (function () {
+    const rows = {{ tm | tojson }};
+    new Chart(document.getElementById('chart-tendencia_mensual'), {
+      type: 'line',
+      data: {
+        labels: rows.map(r => r.anio + '-' + String(r.mes).padStart(2, '0')),
+        datasets: [{
+          label: 'Homicidios',
+          data: rows.map(r => r.total),
+          borderColor: BLUE,
+          backgroundColor: BLUE + '22',
+          tension: 0.3,
+          fill: true,
+          pointRadius: 2,
+        }],
+      },
+      options: baseOpts(),
+    });
+  })();
+  {%- endif %}
+
+  /* Top 10 arma / zona — horizontal bar */
+  {%- set az = resultados['arma_zona_top10'] %}
+  {%- if az %}
+  (function () {
+    const rows = {{ az | tojson }};
+    new Chart(document.getElementById('chart-arma_zona_top10'), {
+      type: 'bar',
+      data: {
+        labels: rows.map(r => r.arma_medio),
+        datasets: [{
+          label: 'Total',
+          data: rows.map(r => r.total),
+          backgroundColor: BLUE,
+        }],
+      },
+      options: { ...baseOpts(), indexAxis: 'y' },
+    });
+  })();
+  {%- endif %}
+
+  /* Top 15 sexo / modalidad — horizontal bar, colored by sex */
+  {%- set sm = resultados['sexo_modalidad_top15'] %}
+  {%- if sm %}
+  (function () {
+    const rows = {{ sm | tojson }};
+    new Chart(document.getElementById('chart-sexo_modalidad_top15'), {
+      type: 'bar',
+      data: {
+        labels: rows.map(r => r.sexo[0] + ' — ' + r.modalidad_presunta),
+        datasets: [{
+          label: 'Homicidios',
+          data: rows.map(r => r.total),
+          backgroundColor: rows.map(r => r.sexo === 'MASCULINO' ? BLUE : RUST),
+        }],
+      },
+      options: { ...baseOpts(), indexAxis: 'y' },
+    });
+  })();
+  {%- endif %}
+</script>
+{% endblock %}

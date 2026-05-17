@@ -1,3 +1,4 @@
+import gc
 import os
 
 import duckdb
@@ -19,87 +20,84 @@ def _fetch_data() -> pd.DataFrame:
 
 
 def _build_schema(conn: duckdb.DuckDBPyConnection, df: pd.DataFrame) -> None:
-    # ── Preprocess in pandas ──────────────────────────────────────────────────
-    raw = df.copy()
-    raw["fecha_hecho"] = pd.to_datetime(raw["fecha_hecho"], errors="coerce").dt.date
-    raw["cantidad"] = pd.to_numeric(raw["cantidad"], errors="coerce").fillna(1).astype(int)
-    if "spoa_caracterizacion" not in raw.columns:
-        raw["spoa_caracterizacion"] = "SIN DATO"
-    raw["spoa_caracterizacion"] = raw["spoa_caracterizacion"].fillna("SIN DATO")
-    raw = raw.dropna(subset=["fecha_hecho"])
+    # Register the raw DataFrame as a zero-copy view — no .copy() needed
+    conn.register("_raw_df", df)
 
-    # ── dim_tiempo ────────────────────────────────────────────────────────────
-    dt = (
-        raw[["fecha_hecho"]]
-        .drop_duplicates()
-        .reset_index(drop=True)
-        .assign(
-            tiempo_id=lambda x: range(1, len(x) + 1),
-            anio=lambda x: pd.to_datetime(x["fecha_hecho"]).dt.year,
-            mes=lambda x: pd.to_datetime(x["fecha_hecho"]).dt.month,
-            trimestre=lambda x: pd.to_datetime(x["fecha_hecho"]).dt.quarter,
-            dia_semana=lambda x: pd.to_datetime(x["fecha_hecho"]).dt.dayofweek,
-        )
-    )
-    conn.register("_dt", dt)
-    conn.execute("CREATE OR REPLACE TABLE dim_tiempo AS SELECT * FROM _dt")
-    conn.unregister("_dt")
+    # Materialise with type coercions; pandas ref released immediately after
+    conn.execute("""
+        CREATE OR REPLACE TABLE _raw AS
+        SELECT
+            TRY_CAST(fecha_hecho AS DATE)              AS fecha_hecho,
+            COALESCE(TRY_CAST(cantidad AS INTEGER), 1) AS cantidad,
+            cod_depto, departamento, cod_muni, municipio, zona,
+            arma_medio,
+            _modalidad_presunta,
+            sexo,
+            COALESCE(spoa_caracterizacion, 'SIN DATO') AS spoa_caracterizacion
+        FROM _raw_df
+        WHERE TRY_CAST(fecha_hecho AS DATE) IS NOT NULL
+    """)
+    conn.unregister("_raw_df")
 
-    # ── dim_ubicacion ─────────────────────────────────────────────────────────
-    du = (
-        raw[["cod_depto", "departamento", "cod_muni", "municipio", "zona"]]
-        .drop_duplicates()
-        .reset_index(drop=True)
-        .assign(ubicacion_id=lambda x: range(1, len(x) + 1))
-    )
-    du = du[["ubicacion_id", "cod_depto", "departamento", "cod_muni", "municipio", "zona"]]
-    conn.register("_du", du)
-    conn.execute("CREATE OR REPLACE TABLE dim_ubicacion AS SELECT * FROM _du")
-    conn.unregister("_du")
+    conn.execute("""
+        CREATE OR REPLACE TABLE dim_tiempo AS
+        SELECT
+            ROW_NUMBER() OVER (ORDER BY fecha_hecho) AS tiempo_id,
+            fecha_hecho,
+            YEAR(fecha_hecho)      AS anio,
+            MONTH(fecha_hecho)     AS mes,
+            QUARTER(fecha_hecho)   AS trimestre,
+            DAYOFWEEK(fecha_hecho) AS dia_semana
+        FROM (SELECT DISTINCT fecha_hecho FROM _raw)
+    """)
 
-    # ── dim_arma ──────────────────────────────────────────────────────────────
-    da = (
-        raw[["arma_medio"]]
-        .drop_duplicates()
-        .reset_index(drop=True)
-        .assign(arma_id=lambda x: range(1, len(x) + 1))
-    )
-    da = da[["arma_id", "arma_medio"]]
-    conn.register("_da", da)
-    conn.execute("CREATE OR REPLACE TABLE dim_arma AS SELECT * FROM _da")
-    conn.unregister("_da")
+    conn.execute("""
+        CREATE OR REPLACE TABLE dim_ubicacion AS
+        SELECT
+            ROW_NUMBER() OVER (ORDER BY cod_depto, cod_muni, zona) AS ubicacion_id,
+            cod_depto, departamento, cod_muni, municipio, zona
+        FROM (SELECT DISTINCT cod_depto, departamento, cod_muni, municipio, zona FROM _raw)
+    """)
 
-    # ── dim_modalidad ─────────────────────────────────────────────────────────
-    dm = (
-        raw[["_modalidad_presunta", "sexo", "spoa_caracterizacion"]]
-        .drop_duplicates()
-        .reset_index(drop=True)
-        .rename(columns={"_modalidad_presunta": "modalidad_presunta"})
-        .assign(modalidad_id=lambda x: range(1, len(x) + 1))
-    )
-    dm = dm[["modalidad_id", "modalidad_presunta", "sexo", "spoa_caracterizacion"]]
-    conn.register("_dm", dm)
-    conn.execute("CREATE OR REPLACE TABLE dim_modalidad AS SELECT * FROM _dm")
-    conn.unregister("_dm")
+    conn.execute("""
+        CREATE OR REPLACE TABLE dim_arma AS
+        SELECT
+            ROW_NUMBER() OVER (ORDER BY arma_medio) AS arma_id,
+            arma_medio
+        FROM (SELECT DISTINCT arma_medio FROM _raw)
+    """)
 
-    # ── fact_homicidios (built via pandas merges, then loaded into DuckDB) ────
-    fact = (
-        raw
-        .merge(dt[["tiempo_id", "fecha_hecho"]], on="fecha_hecho")
-        .merge(du[["ubicacion_id", "cod_depto", "cod_muni", "zona"]],
-               on=["cod_depto", "cod_muni", "zona"])
-        .merge(da[["arma_id", "arma_medio"]], on="arma_medio")
-        .merge(
-            dm[["modalidad_id", "modalidad_presunta", "sexo", "spoa_caracterizacion"]].rename(
-                columns={"modalidad_presunta": "_modalidad_presunta"}
-            ),
-            on=["_modalidad_presunta", "sexo", "spoa_caracterizacion"],
-        )
-    )[["tiempo_id", "ubicacion_id", "arma_id", "modalidad_id", "cantidad"]]
+    conn.execute("""
+        CREATE OR REPLACE TABLE dim_modalidad AS
+        SELECT
+            ROW_NUMBER() OVER (ORDER BY _modalidad_presunta, sexo, spoa_caracterizacion) AS modalidad_id,
+            _modalidad_presunta AS modalidad_presunta,
+            sexo,
+            spoa_caracterizacion
+        FROM (SELECT DISTINCT _modalidad_presunta, sexo, spoa_caracterizacion FROM _raw)
+    """)
 
-    conn.register("_fact", fact)
-    conn.execute("CREATE OR REPLACE TABLE fact_homicidios AS SELECT * FROM _fact")
-    conn.unregister("_fact")
+    # Fact table built entirely inside DuckDB — no pandas merges, no copies
+    conn.execute("""
+        CREATE OR REPLACE TABLE fact_homicidios AS
+        SELECT
+            dt.tiempo_id,
+            du.ubicacion_id,
+            da.arma_id,
+            dm.modalidad_id,
+            r.cantidad
+        FROM _raw r
+        JOIN dim_tiempo    dt ON r.fecha_hecho = dt.fecha_hecho
+        JOIN dim_ubicacion du ON r.cod_depto   = du.cod_depto
+                              AND r.cod_muni   = du.cod_muni
+                              AND r.zona       = du.zona
+        JOIN dim_arma      da ON r.arma_medio  = da.arma_medio
+        JOIN dim_modalidad dm ON r._modalidad_presunta   = dm.modalidad_presunta
+                              AND r.sexo                 = dm.sexo
+                              AND r.spoa_caracterizacion = dm.spoa_caracterizacion
+    """)
+
+    conn.execute("DROP TABLE _raw")
 
 
 def _md_conn() -> duckdb.DuckDBPyConnection:
@@ -129,6 +127,8 @@ def ensure_db() -> None:
             if not _tables_exist(conn):
                 df = _fetch_data()
                 _build_schema(conn, df)
+                del df
+                gc.collect()
             _conn = conn
             return
         except Exception as exc:
@@ -140,6 +140,8 @@ def ensure_db() -> None:
     df = _fetch_data()
     conn = duckdb.connect(":memory:")
     _build_schema(conn, df)
+    del df
+    gc.collect()
     _conn = conn
 
 

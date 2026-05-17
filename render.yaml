@@ -13,3 +13,5 @@ services:
         value: "3.12"
       - key: MOTHERDUCK_TOKEN
         sync: false
+      - key: WEB_CONCURRENCY
+        value: "1"

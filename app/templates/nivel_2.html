@@ -90,7 +90,7 @@
       </div>
     </div>
 
-    <!-- SECTIONS 3–6: One per analytical query -->
+    <!-- SECTIONS 3–6: One per analytical query — data loaded async -->
     {% for consulta in nivel.consultas %}
     <div class="section">
       <p class="section-label">{{ consulta.label }}</p>
@@ -98,65 +98,17 @@
       <p class="section-body">{{ consulta.descripcion }}</p>
 
       {% if consulta.id != 'por_departamento_anio' %}
-      <div class="viz-row">
+      <div class="viz-row loading">
         <div class="chart-wrap">
           <canvas id="chart-{{ consulta.id }}"></canvas>
         </div>
-        <div class="dataset-wrap">
-          {% set filas = resultados[consulta.id] %}
-          {% if filas %}
-          <div class="query-wrap">
-            <table class="query-table">
-              <thead>
-                <tr>
-                  {% for col in consulta.columnas %}
-                  <th>{{ col }}</th>
-                  {% endfor %}
-                </tr>
-              </thead>
-              <tbody>
-                {% for fila in filas %}
-                <tr>
-                  {% for campo in consulta.campos %}
-                  <td{% if loop.last %} class="num"{% endif %}>{{ fila[campo] }}</td>
-                  {% endfor %}
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-          {% else %}
-          <p class="query-empty">No hay datos disponibles para esta consulta.</p>
-          {% endif %}
+        <div class="dataset-wrap" id="data-wrap-{{ consulta.id }}">
+          <div class="query-spinner"></div>
         </div>
       </div>
       {% else %}
-      <div class="dataset-wrap">
-        {% set filas = resultados[consulta.id] %}
-        {% if filas %}
-        <div class="query-wrap">
-          <table class="query-table">
-            <thead>
-              <tr>
-                {% for col in consulta.columnas %}
-                <th>{{ col }}</th>
-                {% endfor %}
-              </tr>
-            </thead>
-            <tbody>
-              {% for fila in filas %}
-              <tr>
-                {% for campo in consulta.campos %}
-                <td{% if loop.last %} class="num"{% endif %}>{{ fila[campo] }}</td>
-                {% endfor %}
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-        {% else %}
-        <p class="query-empty">No hay datos disponibles para esta consulta.</p>
-        {% endif %}
+      <div class="dataset-wrap" id="data-wrap-{{ consulta.id }}">
+        <div class="query-spinner"></div>
       </div>
       {% endif %}
     </div>
@@ -178,10 +130,17 @@
   }, { threshold: 0.1 });
   sections.forEach(s => observer.observe(s));
 
-  /* ── Table paginator ── */
+  /* ── Constants ── */
   const PAGE_SIZE = 20;
+  const BLUE = '#0d89a1';
+  const RUST = '#d38976';
+  const GRAY = '#3d373a';
 
-  document.querySelectorAll('.query-table').forEach(table => {
+  /* Consulta metadata (static, server-rendered) */
+  const CONSULTAS = {{ nivel.consultas | tojson }};
+
+  /* ── Paginator (reusable) ── */
+  function initPaginator(table) {
     const rows = Array.from(table.querySelectorAll('tbody tr'));
     if (rows.length <= PAGE_SIZE) return;
 
@@ -223,13 +182,47 @@
     prev.addEventListener('click', () => show(page - 1));
     next.addEventListener('click', () => show(page + 1));
     show(0);
-  });
+  }
 
-  /* ── Charts ── */
-  const BLUE = '#0d89a1';
-  const RUST = '#d38976';
-  const GRAY = '#3d373a';
+  /* ── Table renderer ── */
+  function renderTable(id, rows, columnas, campos) {
+    const wrap = document.getElementById('data-wrap-' + id);
+    if (!wrap) return;
 
+    if (!rows || !rows.length) {
+      wrap.innerHTML = '<p class="query-empty">No hay datos disponibles para esta consulta.</p>';
+      return;
+    }
+
+    const thead = '<thead><tr>' +
+      columnas.map(c => '<th>' + c + '</th>').join('') +
+      '</tr></thead>';
+
+    const tbody = '<tbody>' +
+      rows.map(row =>
+        '<tr>' +
+        campos.map((f, i) => {
+          const cls = i === campos.length - 1 ? ' class="num"' : '';
+          return '<td' + cls + '>' + row[f] + '</td>';
+        }).join('') +
+        '</tr>'
+      ).join('') +
+      '</tbody>';
+
+    const qw    = document.createElement('div');
+    qw.className = 'query-wrap';
+    const table  = document.createElement('table');
+    table.className = 'query-table';
+    table.innerHTML  = thead + tbody;
+    qw.appendChild(table);
+
+    wrap.innerHTML = '';
+    wrap.appendChild(qw);
+
+    initPaginator(table);
+  }
+
+  /* ── Chart helpers ── */
   function baseOpts() {
     return {
       responsive: true,
@@ -242,11 +235,7 @@
     };
   }
 
-  /* Tendencia mensual — line */
-  {%- set tm = resultados['tendencia_mensual'] %}
-  {%- if tm %}
-  (function () {
-    const rows = {{ tm | tojson }};
+  function buildTendenciaChart(rows) {
     new Chart(document.getElementById('chart-tendencia_mensual'), {
       type: 'line',
       data: {
@@ -263,14 +252,9 @@
       },
       options: baseOpts(),
     });
-  })();
-  {%- endif %}
+  }
 
-  /* Top 10 arma / zona — horizontal bar */
-  {%- set az = resultados['arma_zona_top10'] %}
-  {%- if az %}
-  (function () {
-    const rows = {{ az | tojson }};
+  function buildArmaZonaChart(rows) {
     new Chart(document.getElementById('chart-arma_zona_top10'), {
       type: 'bar',
       data: {
@@ -283,14 +267,9 @@
       },
       options: { ...baseOpts(), indexAxis: 'y' },
     });
-  })();
-  {%- endif %}
+  }
 
-  /* Top 15 sexo / modalidad — horizontal bar, colored by sex */
-  {%- set sm = resultados['sexo_modalidad_top15'] %}
-  {%- if sm %}
-  (function () {
-    const rows = {{ sm | tojson }};
+  function buildSexoModalidadChart(rows) {
     new Chart(document.getElementById('chart-sexo_modalidad_top15'), {
       type: 'bar',
       data: {
@@ -303,7 +282,31 @@
       },
       options: { ...baseOpts(), indexAxis: 'y' },
     });
-  })();
-  {%- endif %}
+  }
+
+  /* ── Async data fetch ── */
+  fetch('/nivel-2/api/results')
+    .then(r => r.json())
+    .then(({ ok, data }) => {
+      if (!ok) {
+        document.querySelectorAll('[id^="data-wrap-"]').forEach(w => {
+          w.innerHTML = '<p class="query-empty">Error al cargar los datos.</p>';
+        });
+        return;
+      }
+
+      CONSULTAS.forEach(c => renderTable(c.id, data[c.id], c.columnas, c.campos));
+
+      document.querySelectorAll('.viz-row.loading').forEach(r => r.classList.remove('loading'));
+
+      if (data.tendencia_mensual?.length)    buildTendenciaChart(data.tendencia_mensual);
+      if (data.arma_zona_top10?.length)      buildArmaZonaChart(data.arma_zona_top10);
+      if (data.sexo_modalidad_top15?.length) buildSexoModalidadChart(data.sexo_modalidad_top15);
+    })
+    .catch(() => {
+      document.querySelectorAll('[id^="data-wrap-"]').forEach(w => {
+        w.innerHTML = '<p class="query-empty">Error al cargar los datos.</p>';
+      });
+    });
 </script>
 {% endblock %}

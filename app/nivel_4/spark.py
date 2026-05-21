@@ -378,12 +378,26 @@ def _stream_pandas(t0_total: float):
     }
 
 
+def _java_available() -> bool:
+    import shutil
+    if shutil.which("java"):
+        return True
+    java_home = os.environ.get("JAVA_HOME", "")
+    if java_home:
+        return (Path(java_home) / "bin" / "java").exists()
+    return False
+
+
 def stream_pipeline():
     """Generator yielding phase dicts; the SSE route wraps each as a `data:` line."""
     t0_total = time.perf_counter()
     try:
         import pyspark  # noqa: F401
     except ImportError:
+        yield from _stream_pandas(t0_total)
+        return
+
+    if not _java_available():
         yield from _stream_pandas(t0_total)
         return
 

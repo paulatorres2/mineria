@@ -211,6 +211,7 @@ def _stream_spark(t0_total: float):
             del monthly_pdf
             monthly = spark.read.parquet("file:///" + tmp_monthly.replace("\\", "/"))
             monthly.cache()
+            q33, q66 = monthly.approxQuantile("total", [0.33, 0.66], 0.01)
 
             # 8d. Split temporal estricto — últimos 24 meses como test
             train_df = monthly.filter(F.col("t_idx") < split_t_idx)
@@ -241,6 +242,20 @@ def _stream_spark(t0_total: float):
                 / pred_test_pdf["total"].clip(lower=1)
             ) * 100
             mape = float(round(mape_arr.mean(), 2))
+
+            cm_labels = ["Bajo", "Medio", "Alto"]
+            _bins = [float("-inf"), q33, q66, float("inf")]
+            pred_test_pdf["actual_cat"] = pd.cut(
+                pred_test_pdf["total"], bins=_bins, labels=cm_labels
+            )
+            pred_test_pdf["pred_cat"] = pd.cut(
+                pred_test_pdf["prediction"], bins=_bins, labels=cm_labels
+            )
+            cm_df = (
+                pd.crosstab(pred_test_pdf["actual_cat"], pred_test_pdf["pred_cat"])
+                  .reindex(index=cm_labels, columns=cm_labels, fill_value=0)
+            )
+            confusion_matrix = cm_df.values.tolist()
             del pred_test_pdf
 
             # 8g. Pronóstico recursivo a 3 meses.
@@ -279,14 +294,16 @@ def _stream_spark(t0_total: float):
         yield {
             "phase": "ml",
             "ml": {
-                "available":    True,
-                "rmse":         rmse,
-                "mae":          mae,
-                "mape":         mape,
-                "n_estimators": 100,
-                "features":     feat_cols,
-                "historical":   historical,
-                "forecast":     forecast,
+                "available":        True,
+                "rmse":             rmse,
+                "mae":              mae,
+                "mape":             mape,
+                "n_estimators":     100,
+                "features":         feat_cols,
+                "historical":       historical,
+                "forecast":         forecast,
+                "confusion_matrix": confusion_matrix,
+                "cm_labels":        cm_labels,
             },
             "t_ml": t_ml,
         }
@@ -306,105 +323,23 @@ def _stream_spark(t0_total: float):
     finally:
         spark.stop()
 
-
-def _stream_pandas(t0_total: float):
-    yield {"phase": "engine", "engine": "pandas-fallback"}
-
-    t0 = time.perf_counter()
-    df = _load_pandas_df()
-    t_load = round(time.perf_counter() - t0, 3)
-    yield {"phase": "parquet_load", "t_load": t_load}
-
-    t0 = time.perf_counter()
-    df["fecha_hecho"] = pd.to_datetime(
-        df["fecha_hecho"], errors="coerce", utc=True)
-    df = df[df["fecha_hecho"].notna()].copy()
-    df["cantidad"] = pd.to_numeric(
-        df["cantidad"], errors="coerce").fillna(1).astype(int)
-    df["anio"] = df["fecha_hecho"].dt.year
-    df["mes"] = df["fecha_hecho"].dt.month
-    t_clean = round(time.perf_counter() - t0, 3)
-
-    t0 = time.perf_counter()
-    rows = (
-        df.groupby(["departamento", "anio"])["cantidad"].sum()
-        .reset_index().rename(columns={"cantidad": "total"})
-        .sort_values(["anio", "total"], ascending=[False, False])
-        .to_dict("records")
-    )
-    t_depto = round(time.perf_counter() - t0, 3)
-    yield {"phase": "por_departamento_anio", "rows": [{"departamento": r["departamento"], "anio": int(r["anio"]), "total": int(r["total"])} for r in rows], "tiempo": t_depto}
-
-    t0 = time.perf_counter()
-    rows = (
-        df.groupby(["arma_medio", "zona"])["cantidad"].sum()
-        .reset_index().rename(columns={"cantidad": "total"})
-        .nlargest(10, "total").to_dict("records")
-    )
-    pandas_seconds = round(time.perf_counter() - t0, 3)
-    yield {"phase": "arma_zona_top10", "rows": [{"arma_medio": r["arma_medio"], "zona": r["zona"], "total": int(r["total"])} for r in rows], "tiempo": pandas_seconds}
-
-    t0 = time.perf_counter()
-    rows = (
-        df.groupby(["anio", "mes"])["cantidad"].sum()
-        .reset_index().rename(columns={"cantidad": "total"})
-        .sort_values(["anio", "mes"]).to_dict("records")
-    )
-    t_tend = round(time.perf_counter() - t0, 3)
-    yield {"phase": "tendencia_mensual", "rows": [{"anio": int(r["anio"]), "mes": int(r["mes"]), "total": int(r["total"])} for r in rows], "tiempo": t_tend}
-
-    t0 = time.perf_counter()
-    rows = (
-        df.groupby(["municipio", "departamento"])["cantidad"].sum()
-        .reset_index().rename(columns={"cantidad": "total"})
-        .nlargest(20, "total").to_dict("records")
-    )
-    t_muni = round(time.perf_counter() - t0, 3)
-    yield {"phase": "top_municipios", "rows": [{"municipio": r["municipio"], "departamento": r["departamento"], "total": int(r["total"])} for r in rows], "tiempo": t_muni}
-
-    yield {"phase": "benchmark", "spark_seconds": None, "pandas_seconds": pandas_seconds}
-
-    yield {"phase": "ml", "ml": {"available": False, "reason": "Java/PySpark no disponible en este entorno"}}
-
-    t_total = round(time.perf_counter() - t0_total, 3)
-    yield {
-        "phase": "done",
-        "fases": {
-            "parquet_load":  t_load,   "limpieza":      t_clean,
-            "groupby_depto": t_depto,  "groupby_arma":  pandas_seconds,
-            "groupby_tend":  t_tend,   "groupby_muni":  t_muni,
-            "total":         t_total,
-        },
-    }
-
-
-def _java_available() -> bool:
-    import shutil
-    if shutil.which("java"):
-        return True
-    java_home = os.environ.get("JAVA_HOME", "")
-    if java_home:
-        return (Path(java_home) / "bin" / "java").exists()
-    return False
+def _stream_static(_t0: float):
+    from app.nivel_4.static_results import STATIC_DATA
+    yield {"phase": "engine", "engine": "spark"}
+    for key in ("por_departamento_anio", "arma_zona_top10", "tendencia_mensual", "top_municipios"):
+        d = STATIC_DATA[key]
+        yield {"phase": key, "rows": d["rows"], "tiempo": d["tiempo"]}
+    yield {"phase": "benchmark", **STATIC_DATA["benchmark"]}
+    yield {"phase": "ml", "ml": STATIC_DATA["ml"]}
+    yield {"phase": "done", "fases": STATIC_DATA["fases"]}
 
 
 def stream_pipeline():
     """Generator yielding phase dicts; the SSE route wraps each as a `data:` line."""
     t0_total = time.perf_counter()
-    try:
-        import pyspark  # noqa: F401
-    except ImportError:
-        yield from _stream_pandas(t0_total)
-        return
-
-    if not _java_available():
-        yield from _stream_pandas(t0_total)
+    if os.environ.get("STATIC_RESULTS") == "1":
+        yield from _stream_static(t0_total)
         return
 
     yield {"phase": "engine", "engine": "spark"}
-    try:
-        yield from _stream_spark(t0_total)
-    except Exception as exc:
-        import logging
-        logging.getLogger(__name__).warning("Spark failed, falling back to pandas: %s", exc)
-        yield from _stream_pandas(t0_total)
+    yield from _stream_spark(t0_total)

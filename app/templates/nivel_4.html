@@ -107,7 +107,23 @@
       </div>
     </div>
 
-    <!-- SECCIÓN 9: Pronóstico a 3 meses -->
+    <!-- SECCIÓN 9: Matriz de confusión -->
+    <div class="section" id="section-cm">
+      <p class="section-label">Evaluación del modelo</p>
+      <h2 class="section-title">Matriz de<br>Confusión</h2>
+      <p class="section-body">
+        El GBTRegressor predice valores continuos, por lo que los resultados del test set
+        (últimos 24 meses) se discretizan en tres rangos — <strong>Bajo</strong>,
+        <strong>Medio</strong> y <strong>Alto</strong> — usando cuantiles del dataset completo.
+        La diagonal principal muestra las predicciones correctas; los valores fuera de ella
+        indican en qué rango equivocó el modelo.
+      </p>
+      <div id="cm-wrap">
+        <div class="query-spinner"></div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN 10: Pronóstico a 3 meses -->
     <div class="section" id="section-conf">
       <p class="section-label">Evaluación del modelo</p>
       <h2 class="section-title">Pronóstico<br>3 Meses</h2>
@@ -339,6 +355,46 @@
       '</p>';
   }
 
+  /* ── Matriz de confusión ── */
+  function renderConfusionMatrix(ml) {
+    const wrap = document.getElementById('cm-wrap');
+    if (!ml || !ml.available || !ml.confusion_matrix) {
+      wrap.innerHTML = '<div class="ml-unavailable">Matriz de confusión no disponible.</div>';
+      return;
+    }
+    const labels = ml.cm_labels;
+    const matrix = ml.confusion_matrix;
+    const n = labels.length;
+    const maxVal = Math.max(...matrix.flat(), 1);
+
+    function cellStyle(r, c, val) {
+      if (val === 0) return 'background:rgba(0,0,0,0.03)';
+      const alpha = (0.15 + 0.7 * (val / maxVal)).toFixed(2);
+      return r === c
+        ? 'background:rgba(13,137,161,' + alpha + ')'
+        : 'background:rgba(211,137,118,' + alpha + ')';
+    }
+
+    const corner = '<div class="conf-matrix-header" style="text-align:right;color:var(--warm-gray);font-size:0.6rem;white-space:nowrap">Real ↓ / Predicho →</div>';
+    const colHeaders = labels.map(l => '<div class="conf-matrix-header">' + l + '</div>').join('');
+    const dataRows = matrix.map((row, r) =>
+      '<div class="conf-matrix-axis">' + labels[r] + '</div>' +
+      row.map((val, c) =>
+        '<div class="conf-matrix-cell" style="' + cellStyle(r, c, val) + '">' + val + '</div>'
+      ).join('')
+    ).join('');
+
+    wrap.innerHTML =
+      '<div class="conf-matrix-wrap">' +
+        '<div class="conf-matrix" style="grid-template-columns:auto repeat(' + n + ',1fr)">' +
+          corner + colHeaders + dataRows +
+        '</div>' +
+        '<p style="margin-top:12px;font-size:0.72rem;color:var(--warm-gray)">' +
+          'Azul&nbsp;=&nbsp;predicción correcta&nbsp;&nbsp;·&nbsp;&nbsp;Rojo&nbsp;=&nbsp;error de clasificación&nbsp;&nbsp;·&nbsp;&nbsp;Test set: últimos 24 meses' +
+        '</p>' +
+      '</div>';
+  }
+
   /* ── Pronóstico a 3 meses ── */
   function renderForecastChart(ml) {
     const wrap = document.getElementById('conf-wrap');
@@ -469,6 +525,7 @@
 
     } else if (ev.phase === 'ml') {
       renderML(ev.ml);
+      renderConfusionMatrix(ev.ml);
       renderForecastChart(ev.ml);
 
     } else if (ev.phase === 'done') {
@@ -476,14 +533,14 @@
       source.close();
 
     } else if (ev.phase === 'error') {
-      document.querySelectorAll('[id^="data-wrap-"], #bench-wrap, #ml-wrap, #conf-wrap, #tiempos-wrap')
+      document.querySelectorAll('[id^="data-wrap-"], #bench-wrap, #ml-wrap, #cm-wrap, #conf-wrap, #tiempos-wrap')
         .forEach(w => { w.innerHTML = errMsg; });
       source.close();
     }
   };
 
   source.onerror = function() {
-    document.querySelectorAll('[id^="data-wrap-"], #bench-wrap, #ml-wrap, #conf-wrap, #tiempos-wrap')
+    document.querySelectorAll('[id^="data-wrap-"], #bench-wrap, #ml-wrap, #cm-wrap, #conf-wrap, #tiempos-wrap')
       .forEach(w => { w.innerHTML = errMsg; });
     source.close();
   };

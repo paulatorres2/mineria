@@ -11,24 +11,227 @@
   </section>
 
   <main>
+
+    {# ── INTRO ── #}
     <div class="section visible">
       <p class="section-label">Herramienta</p>
       <h2 class="section-title">{{ nivel.herramienta }}</h2>
       <p class="section-body">
-        El análisis de clustering aplica algoritmos de agrupamiento no supervisado sobre el
-        dataset preprocesado. Los clústeres resultantes revelan perfiles de crimen que comparten
-        características geográficas, temporales y de modalidad, permitiendo diseñar estrategias
-        de prevención diferenciadas por grupo.
+        Los algoritmos utilizados para la obtención y el análisis del conocimiento oculto fueron
+        de 3 tipos: clustering, asociación y clasificación, para los que se utilizaron los modelos
+        K-Means, Association Rules +, Random Forest y Naive Bayes.
       </p>
     </div>
 
+    {# ── K-MEANS ── #}
     <div class="section">
-      <p class="section-label">En construcción</p>
-      <h2 class="section-title">Resultados del<br>clustering</h2>
-      <div class="nivel-placeholder">
-        <p>Aquí irán los gráficos de segmentación y la interpretación de los clústeres.</p>
+      <p class="section-label">Clustering</p>
+      <h2 class="section-title">K-Means</h2>
+      <p class="section-body">
+        El primer algoritmo es K-MEANS. Este se basa en una técnica de aprendizaje no supervisado
+        que agrupa instancias en k clústeres minimizando la varianza interna de cada grupo. Para
+        este análisis se utilizó sobre datos agregados por departamento y año, transformando el
+        dataset original de 334.347 eventos en 786 registros que representan el perfil de violencia
+        de cada departamento por año, como se puede observar en la tabla.
+      </p>
+      <figure class="img-figure img-figure--wide">
+        <img class="section-img"
+             src="{{ url_for('static', filename='nivel_3/img/table_kmeans.png') }}"
+             alt="Tabla de datos agregados — 786 registros por departamento y año">
+        <figcaption>Tabla de datos agregados — 786 registros por departamento y año</figcaption>
+      </figure>
+      <p class="section-body">
+        Para el modelo se configuró un número de clúster iterativo, clasificando los datos de 3 a
+        8 clústeres. Orange calculó el Silhouette Score para cada k y seleccionó k=8 como el
+        óptimo por su score de 0.646. Se especificó también un número de 10 iteraciones de
+        ejecución del algoritmo, entre las que el algoritmo se inicializa con distintas semillas
+        y conserva de estas la que mejor desempeño tuvo. Cada ejecución tuvo un máximo de 300
+        iteraciones.
+      </p>
+      <div class="config-box">
+        <strong>Configuración del modelo</strong><br>
+        Número de clústeres: 3 a 8 (iterativo) · Métrica de selección: Silhouette Score ·
+        k óptimo: 8 (score 0.646) · Iteraciones del algoritmo: 10 · Máximo de iteraciones por ejecución: 300
+      </div>
+      <figure class="img-figure img-figure--narrow">
+        <img class="section-img"
+             src="{{ url_for('static', filename='nivel_3/img/config_kmeans.png') }}"
+             alt="Configuración del modelo K-Means en Orange">
+        <figcaption>Configuración del modelo K-Means en Orange</figcaption>
+      </figure>
+
+      <p class="algo-subtitle">Interpretación de resultados</p>
+      <figure class="img-figure">
+        <img class="section-img"
+             src="{{ url_for('static', filename='nivel_3/img/silhouette_kmeans.png') }}"
+             alt="Silhouette Plot — selección del k óptimo">
+        <figcaption>Silhouette Plot — selección del k óptimo (k=8, score 0.646)</figcaption>
+      </figure>
+      <div class="img-grid">
+        <figure class="img-figure">
+          <img class="section-img"
+               src="{{ url_for('static', filename='nivel_3/img/scatterplot_kmeans.png') }}"
+               alt="Scatter Plot — distribución de clústeres K-Means">
+          <figcaption>Scatter Plot — distribución de clústeres K-Means</figcaption>
+        </figure>
+        <figure class="img-figure">
+          <img class="section-img"
+               src="{{ url_for('static', filename='nivel_3/img/box_plot_anio_kmeans.png') }}"
+               alt="Box Plot — Año">
+          <figcaption>Box Plot — Año</figcaption>
+        </figure>
+      </div>
+      <div class="img-grid">
+        <figure class="img-figure">
+          <img class="section-img"
+               src="{{ url_for('static', filename='nivel_3/img/box_plot_cantidad_kmeans.png') }}"
+               alt="Box Plot — Cantidad">
+          <figcaption>Box Plot — Cantidad</figcaption>
+        </figure>
+        <figure class="img-figure">
+          <img class="section-img"
+               src="{{ url_for('static', filename='nivel_3/img/box_plot_silhoutte_kmeans.png') }}"
+               alt="Box Plot — Silhouette">
+          <figcaption>Box Plot — Silhouette</figcaption>
+        </figure>
       </div>
     </div>
+
+    {# ── ASSOCIATION RULES ── #}
+    <div class="section">
+      <p class="section-label">Asociación</p>
+      <h2 class="section-title">Association Rules</h2>
+      <p class="section-body">
+        El siguiente algoritmo es ASSOCIATION RULES. Este busca combinaciones frecuentes de
+        valores categóricos y genera reglas de la forma Antecedente → Consecuente con métricas
+        de soporte, confianza y lift. Para este análisis se buscan patrones entre características
+        del homicidio como zona, sexo, arma y época temporal. Los datos resultantes del
+        preprocesamiento son los siguientes:
+      </p>
+      <figure class="img-figure img-figure--wide">
+        <img class="section-img"
+             src="{{ url_for('static', filename='nivel_3/img/table_association.png') }}"
+             alt="Datos preprocesados para Association Rules">
+        <figcaption>Datos preprocesados para Association Rules</figcaption>
+      </figure>
+
+      <p class="algo-subtitle">Widget: Frequent Itemsets</p>
+      <p class="section-body">
+        El primer widget fue <em>Frequent Itemsets</em>, el cual encuentra conjuntos de elementos
+        frecuentes en los datos. Se configuró de la siguiente forma: el soporte mínimo se ajustó
+        al 3%, que es aproximadamente 10.032 casos — umbral reducido para detectar patrones de
+        FEMINICIDIO (target), el cual constituye el 2% del dataset. El número máximo de itemsets
+        se ajustó a 10.000, mientras que el número mínimo de ítem es de 2 para excluir los casos
+        con un solo ítem (irrelevante para el modelo); para evitar la complejidad del modelo se
+        especificó un máximo de 4 ítems. Las combinaciones frecuentes que superaron el umbral
+        de soporte del 3% fueron 1.559.
+      </p>
+      <div class="config-box">
+        <strong>Configuración Frequent Itemsets</strong><br>
+        Soporte mínimo: 3% (≈ 10.032 casos) · Máximo de itemsets: 10.000 ·
+        Mínimo de ítems: 2 · Máximo de ítems: 4 · Combinaciones encontradas: 1.559
+      </div>
+      <figure class="img-figure">
+        <img class="section-img"
+             src="{{ url_for('static', filename='nivel_3/img/widget_association.png') }}"
+             alt="Frequent Itemsets — 1.559 combinaciones frecuentes">
+        <figcaption>Frequent Itemsets — 1.559 combinaciones frecuentes</figcaption>
+      </figure>
+
+      <p class="algo-subtitle">Widget: Association Rules</p>
+      <p class="section-body">
+        El siguiente widget fue <em>Association Rules</em>. El ajuste fue de un mínimo de soporte
+        del 1% — umbral mínimo puesto que las entradas ya fueron filtradas en el widget anterior.
+        El mínimo de confianza (probabilidad mínima de que el consecuente ocurra dado el
+        antecedente) fue establecido en el 40% y el límite de reglas a generar es de 10.000.
+        Las reglas que lograron generarse en base a las entradas y los umbrales estipulados
+        fueron 4.
+      </p>
+      <div class="config-box">
+        <strong>Configuración Association Rules</strong><br>
+        Soporte mínimo: 1% · Confianza mínima: 40% · Límite de reglas: 10.000 · Reglas generadas: 4
+      </div>
+      <figure class="img-figure">
+        <img class="section-img"
+             src="{{ url_for('static', filename='nivel_3/img/rules_association.png') }}"
+             alt="Association Rules — 4 reglas generadas">
+        <figcaption>Association Rules — 4 reglas generadas</figcaption>
+      </figure>
+      <figure class="img-figure">
+        <img class="section-img"
+             src="{{ url_for('static', filename='nivel_3/img/scatterplot_association.png') }}"
+             alt="Scatter Plot — reglas de asociación">
+        <figcaption>Scatter Plot — reglas de asociación</figcaption>
+      </figure>
+    </div>
+
+    {# ── RANDOM FOREST Y NAIVE BAYES ── #}
+    <div class="section">
+      <p class="section-label">Clasificación</p>
+      <h2 class="section-title">Random Forest<br>y Naive Bayes</h2>
+      <p class="section-body">
+        Los algoritmos del tercer tipo son RANDOM FOREST y NAIVE BAYES; estos corresponden a
+        los algoritmos de clasificación que aprenden a predecir la clase de nuevas instancias
+        a partir de ejemplos etiquetados. Se implementaron dos clasificadores: Random Forest
+        (conjunto de árboles de decisión) y Naive Bayes (clasificador probabilístico),
+        comparados sobre el mismo conjunto de prueba para determinar cuál predice mejor la
+        caracterización del homicidio.
+      </p>
+
+      <p class="algo-subtitle">Random Forest</p>
+      <p class="section-body">
+        La configuración para el Random Forest estableció un conjunto de 100 árboles, dado el
+        tamaño del dataset. El número de atributos por cada división es de 3, para controlar
+        la correlación y la aleatoriedad.
+      </p>
+      <div class="config-box">
+        <strong>Configuración Random Forest</strong><br>
+        Número de árboles: 100 · Atributos por división: 3
+      </div>
+      <figure class="img-figure">
+        <img class="section-img"
+             src="{{ url_for('static', filename='nivel_3/img/config_random.png') }}"
+             alt="Configuración del modelo Random Forest">
+        <figcaption>Configuración del modelo Random Forest</figcaption>
+      </figure>
+
+      <p class="algo-subtitle">Naive Bayes</p>
+      <p class="section-body">
+        Naive Bayes es un clasificador probabilístico basado en el teorema de Bayes con la
+        asunción de independencia condicional entre características, lo que lo hace eficiente
+        y comparable frente a modelos más complejos como Random Forest.
+      </p>
+
+      <div class="img-grid img-grid--3">
+        <figure class="img-figure">
+          <img class="section-img"
+               src="{{ url_for('static', filename='nivel_3/img/test_score_random_naive.png') }}"
+               alt="Test &amp; Score — comparación de modelos">
+          <figcaption>Test &amp; Score — comparación de modelos</figcaption>
+        </figure>
+        <figure class="img-figure">
+          <img class="section-img"
+               src="{{ url_for('static', filename='nivel_3/img/matrix_random.png') }}"
+               alt="Confusion Matrix — Random Forest">
+          <figcaption>Confusion Matrix — Random Forest</figcaption>
+        </figure>
+        <figure class="img-figure">
+          <img class="section-img"
+               src="{{ url_for('static', filename='nivel_3/img/matrix_naive.png') }}"
+               alt="Confusion Matrix — Naive Bayes">
+          <figcaption>Confusion Matrix — Naive Bayes</figcaption>
+        </figure>
+      </div>
+
+      <p class="algo-subtitle">Evidencias del procesamiento de minería de datos</p>
+      <figure class="img-figure">
+        <img class="section-img"
+             src="{{ url_for('static', filename='nivel_3/img/evidencia_mineria.png') }}"
+             alt="Evidencias del procesamiento de minería de datos">
+        <figcaption>Evidencias del procesamiento de minería de datos</figcaption>
+      </figure>
+    </div>
+
   </main>
 
 {% endblock %}

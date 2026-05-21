@@ -11,30 +11,138 @@
   </section>
 
   <main>
+
+    <!-- SECCIÓN 1: Herramienta + SEMMA -->
     <div class="section visible">
       <p class="section-label">Herramienta</p>
       <h2 class="section-title">{{ nivel.herramienta }}</h2>
       <p class="section-body">
-        PySpark MLlib procesa el dataset completo en un pipeline de machine learning: ingesta,
-        preprocesamiento, vectorización, entrenamiento y evaluación de métricas (AUC, F1, matriz
-        de confusión). El objetivo es construir un modelo predictivo de criminalidad capaz de
-        anticipar focos de riesgo con base en variables históricas.
+        PySpark procesa más de 1 500 000 registros del dataset de homicidios en modo local
+        distribuido, ejecutando groupBy y agregaciones en paralelo sobre múltiples particiones.
+        La metodología SEMMA guía cada fase del pipeline, desde la ingesta hasta la evaluación
+        del modelo de regresión.
       </p>
-    </div>
 
-    <div class="section">
-      <p class="section-label">En construcción</p>
-      <h2 class="section-title">Métricas y resultados<br>del modelo</h2>
-      <div class="nivel-placeholder">
-        <p>Aquí irán las métricas de evaluación, la matriz de confusión y las conclusiones del modelo.</p>
+      <div class="semma-strip">
+        {% for fase in nivel.semma %}
+        <div class="semma-fase">
+          <div class="semma-letra">{{ fase.fase[0] }}</div>
+          <div class="semma-nombre">{{ fase.fase }}</div>
+          <div class="semma-desc">{{ fase.descripcion }}</div>
+        </div>
+        {% endfor %}
       </div>
     </div>
+
+    <!-- SECCIÓN 2: Pipeline MLlib -->
+    <div class="section">
+      <p class="section-label">Pipeline MLlib</p>
+      <h2 class="section-title">Etapas del<br>Modelo Predictivo</h2>
+      <p class="section-body">
+        El pipeline de MLlib encadena transformadores y estimadores en un objeto serializable.
+        Cada etapa recibe el DataFrame enriquecido por la anterior, garantizando reproducibilidad
+        y consistencia entre entrenamiento y predicción.
+      </p>
+
+      <div class="pipeline-strip">
+        {% for stage in nivel.pipeline_stages %}
+        <div class="pipeline-stage">
+          <div class="pipeline-num">{{ stage.num }}</div>
+          <div class="pipeline-nombre">{{ stage.nombre }}</div>
+          <div class="pipeline-desc">{{ stage.desc }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- SECCIONES 3–6: Análisis distribuidos (async) -->
+    {% for consulta in nivel.consultas %}
+    <div class="section">
+      <p class="section-label">{{ consulta.label }}</p>
+      <h2 class="section-title">{{ consulta.titulo }}</h2>
+      <p class="section-body">{{ consulta.descripcion }}</p>
+
+      {% if consulta.id in ['arma_zona_top10', 'tendencia_mensual'] %}
+      <div class="viz-row loading">
+        <div class="chart-wrap">
+          <canvas id="chart-{{ consulta.id }}"></canvas>
+        </div>
+        <div class="dataset-wrap" id="data-wrap-{{ consulta.id }}">
+          <div class="query-spinner"></div>
+        </div>
+      </div>
+      {% else %}
+      <div class="dataset-wrap" id="data-wrap-{{ consulta.id }}">
+        <div class="query-spinner"></div>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+    <!-- SECCIÓN 7: Benchmark Spark vs Pandas -->
+    <div class="section" id="section-bench">
+      <p class="section-label">Indicador de rendimiento</p>
+      <h2 class="section-title">Spark vs Pandas <span id="engine-badge"></span></h2>
+      <p class="section-body">
+        Comparación del tiempo de ejecución de la operación <em>groupBy(arma_medio, zona)</em>
+        entre Apache Spark (local[2]) y Pandas. A escala de nodo único Pandas suele ser más rápido
+        por su menor overhead de inicialización — Spark brilla en clusters reales con terabytes de datos.
+      </p>
+      <div id="bench-wrap">
+        <div class="query-spinner"></div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN 8: Métricas del modelo ML -->
+    <div class="section" id="section-ml">
+      <p class="section-label">Modelo GBTRegressor MLlib</p>
+      <h2 class="section-title">Métricas de<br>Pronóstico</h2>
+      <p class="section-body">
+        El modelo predice el total mensual de homicidios a partir de rezagos
+        temporales (lag 1, 2, 3, 6, 12), estacionalidad cíclica y tendencia lineal.
+        Entrenado con split temporal estricto — los últimos 24 meses como evaluación.
+      </p>
+      <div id="ml-wrap">
+        <div class="query-spinner"></div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN 9: Pronóstico a 3 meses -->
+    <div class="section" id="section-conf">
+      <p class="section-label">Evaluación del modelo</p>
+      <h2 class="section-title">Pronóstico<br>3 Meses</h2>
+      <p class="section-body">
+        Últimos 36 meses de la serie histórica seguidos de la proyección para
+        mayo, junio y julio 2026. Las predicciones se generan de forma recursiva
+        usando los valores previos predichos como entrada del modelo MLlib.
+      </p>
+      <div id="conf-wrap">
+        <div class="query-spinner"></div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN 10: Desglose de tiempos -->
+    <div class="section" id="section-tiempos">
+      <p class="section-label">Rendimiento</p>
+      <h2 class="section-title">Desglose de<br>Tiempos de Ejecución</h2>
+      <p class="section-body">
+        Tiempo medido por fase durante la última ejecución del pipeline.
+        El tiempo total incluye inicio de JVM, carga de datos, consultas analíticas
+        y entrenamiento del modelo — lo que explica el tiempo de espera real.
+      </p>
+      <div id="tiempos-wrap">
+        <div class="query-spinner"></div>
+      </div>
+    </div>
+
   </main>
 
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script>
+  /* ── Scroll-reveal ── */
   const sections = document.querySelectorAll('.section');
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(e => {
@@ -42,5 +150,342 @@
     });
   }, { threshold: 0.1 });
   sections.forEach(s => observer.observe(s));
+
+  /* ── Constantes ── */
+  const PAGE_SIZE = 20;
+  const BLUE  = '#0d89a1';
+  const RUST  = '#d38976';
+  const GRAY  = '#3d373a';
+  const CONSULTAS = {{ nivel.consultas | tojson }};
+
+  /* ── Paginator ── */
+  function initPaginator(table) {
+    const rows = Array.from(table.querySelectorAll('tbody tr'));
+    if (rows.length <= PAGE_SIZE) return;
+    const total = rows.length;
+    const totalPages = Math.ceil(total / PAGE_SIZE);
+    let page = 0;
+    const wrap = table.closest('.query-wrap');
+    const ctrl = document.createElement('div');
+    ctrl.className = 'tpag';
+    const prev = document.createElement('button'); prev.className = 'tpag-btn'; prev.textContent = '←';
+    const info = document.createElement('span');   info.className = 'tpag-info';
+    const next = document.createElement('button'); next.className = 'tpag-btn'; next.textContent = '→';
+    ctrl.append(prev, info, next);
+    wrap.appendChild(ctrl);
+    function show(p) {
+      page = p;
+      rows.forEach((r, i) => {
+        r.style.display = (i >= p * PAGE_SIZE && i < (p + 1) * PAGE_SIZE) ? '' : 'none';
+      });
+      prev.disabled = page === 0;
+      next.disabled = page === totalPages - 1;
+      info.textContent = 'Página ' + (page + 1) + ' de ' + totalPages + ' · ' + total + ' registros';
+    }
+    prev.addEventListener('click', () => show(page - 1));
+    next.addEventListener('click', () => show(page + 1));
+    show(0);
+  }
+
+  /* ── Tabla ── */
+  function renderTable(id, rows, columnas, campos) {
+    const wrap = document.getElementById('data-wrap-' + id);
+    if (!wrap) return;
+    if (!rows || !rows.length) {
+      wrap.innerHTML = '<p class="query-empty">Sin datos disponibles.</p>';
+      return;
+    }
+    const thead = '<thead><tr>' + columnas.map(c => '<th>' + c + '</th>').join('') + '</tr></thead>';
+    const tbody = '<tbody>' + rows.map(row =>
+      '<tr>' + campos.map((f, i) => {
+        const cls = i === campos.length - 1 ? ' class="num"' : '';
+        return '<td' + cls + '>' + (row[f] ?? '—') + '</td>';
+      }).join('') + '</tr>'
+    ).join('') + '</tbody>';
+    const qw = document.createElement('div');
+    qw.className = 'query-wrap';
+    const table = document.createElement('table');
+    table.className = 'query-table';
+    table.innerHTML = thead + tbody;
+    qw.appendChild(table);
+    wrap.innerHTML = '';
+    wrap.appendChild(qw);
+    initPaginator(table);
+  }
+
+  /* ── Opciones base Chart.js ── */
+  function baseOpts() {
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: GRAY } } },
+      scales: {
+        x: { ticks: { color: GRAY }, grid: { color: '#37637022' } },
+        y: { ticks: { color: GRAY }, grid: { color: '#37637022' } },
+      },
+    };
+  }
+
+  /* ── Charts de análisis ── */
+  function buildTendenciaChart(rows) {
+    new Chart(document.getElementById('chart-tendencia_mensual'), {
+      type: 'line',
+      data: {
+        labels: rows.map(r => r.anio + '-' + String(r.mes).padStart(2, '0')),
+        datasets: [{
+          label: 'Homicidios',
+          data: rows.map(r => r.total),
+          borderColor: BLUE,
+          backgroundColor: BLUE + '22',
+          tension: 0.3,
+          fill: true,
+          pointRadius: 2,
+        }],
+      },
+      options: baseOpts(),
+    });
+  }
+
+  function buildArmaZonaChart(rows) {
+    new Chart(document.getElementById('chart-arma_zona_top10'), {
+      type: 'bar',
+      data: {
+        labels: rows.map(r => r.arma_medio),
+        datasets: [{ label: 'Total', data: rows.map(r => r.total), backgroundColor: BLUE }],
+      },
+      options: { ...baseOpts(), indexAxis: 'y' },
+    });
+  }
+
+  /* ── Timing badge por consulta ── */
+  function renderTiming(id, seconds, engine) {
+    const wrap = document.getElementById('data-wrap-' + id);
+    if (!wrap) return;
+    const label = engine === 'spark' ? 'Spark local' : 'Pandas';
+    const div = document.createElement('div');
+    div.className = 'query-timing';
+    div.textContent = '⏱ ' + seconds.toFixed(3) + ' s — ' + label;
+    wrap.appendChild(div);
+  }
+
+  /* ── Benchmark chart ── */
+  function buildBenchChart(sparkSec, pandasSec) {
+    const benchWrap = document.getElementById('bench-wrap');
+    benchWrap.innerHTML = '<div class="bench-wrap"><canvas id="chart-bench"></canvas></div>';
+    new Chart(document.getElementById('chart-bench'), {
+      type: 'bar',
+      data: {
+        labels: ['Apache Spark (local)', 'Pandas'],
+        datasets: [{
+          label: 'Segundos',
+          data: [sparkSec, pandasSec],
+          backgroundColor: [BLUE, RUST],
+        }],
+      },
+      options: {
+        ...baseOpts(),
+        indexAxis: 'y',
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: ctx => ' ' + ctx.parsed.x.toFixed(3) + ' s' } },
+        },
+        scales: {
+          x: { ticks: { color: GRAY, callback: v => v + ' s' }, grid: { color: '#37637022' } },
+          y: { ticks: { color: GRAY }, grid: { display: false } },
+        },
+      },
+    });
+  }
+
+  function buildBenchPandasOnly(pandasSec) {
+    document.getElementById('bench-wrap').innerHTML =
+      '<div class="ml-unavailable">Spark no disponible en este entorno. ' +
+      'Tiempo Pandas para groupBy(arma_medio, zona): <strong>' + pandasSec + ' s</strong>.</div>';
+  }
+
+  /* ── Métricas ML ── */
+  function metricCard(value, label) {
+    return '<div class="metric-card">' +
+      '<div class="metric-card-value">' + value + '</div>' +
+      '<div class="metric-card-label">' + label + '</div>' +
+    '</div>';
+  }
+
+  function renderML(ml) {
+    const wrap = document.getElementById('ml-wrap');
+    if (!ml || !ml.available) {
+      wrap.innerHTML = '<div class="ml-unavailable">Modelo MLlib no disponible en este entorno. ' +
+        (ml && ml.reason ? ml.reason : 'Java/PySpark no instalado.') + '</div>';
+      return;
+    }
+    const accuracy = Math.max(0, 100 - ml.mape).toFixed(2);
+    wrap.innerHTML =
+      '<div class="metric-grid">' +
+        metricCard(ml.rmse.toFixed(1),         'RMSE') +
+        metricCard(ml.mae.toFixed(1),          'MAE') +
+        metricCard(ml.mape.toFixed(2) + ' %',  'MAPE') +
+        metricCard(accuracy + ' %',            'Precisión') +
+        metricCard(ml.n_estimators,            'Estimadores') +
+      '</div>' +
+      '<dl class="metric-descriptions">' +
+        '<div><dt>RMSE</dt><dd>Error cuadrático medio raíz. Penaliza errores grandes más que el MAE. Unidad: homicidios / mes.</dd></div>' +
+        '<div><dt>MAE</dt><dd>Error absoluto medio. Promedio de las desviaciones absolutas entre el valor real y la predicción.</dd></div>' +
+        '<div><dt>MAPE</dt><dd>Error porcentual absoluto medio sobre el conjunto de prueba (últimos 24 meses). Cuanto menor, mejor.</dd></div>' +
+        '<div><dt>Precisión</dt><dd>Acierto general del modelo: <em>100 − MAPE</em>. Interpretable como el porcentaje de homicidios mensuales explicados correctamente.</dd></div>' +
+        '<div><dt>Estimadores</dt><dd>Número de árboles en el ensamble GBTRegressor (maxIter=100, maxDepth=4, seed=42).</dd></div>' +
+      '</dl>' +
+      '<p class="section-body" style="margin-top:24px">' +
+        '<strong>Features:</strong> ' + ml.features.join(', ') +
+      '</p>';
+  }
+
+  /* ── Pronóstico a 3 meses ── */
+  function renderForecastChart(ml) {
+    const wrap = document.getElementById('conf-wrap');
+    if (!ml || !ml.available || !ml.historical || !ml.forecast) {
+      wrap.innerHTML = '<div class="ml-unavailable">Gráfico de pronóstico no disponible.</div>';
+      return;
+    }
+    const recent     = ml.historical.slice(-36);
+    const histLabels = recent.map(r => r.fecha);
+    const histData   = recent.map(r => r.total);
+    const foreLabels = ml.forecast.map(r => r.fecha);
+    const foreData   = ml.forecast.map(r => r.total);
+
+    wrap.innerHTML = '<div class="forecast-chart-wrap"><canvas id="chart-forecast"></canvas></div>';
+    new Chart(document.getElementById('chart-forecast'), {
+      type: 'line',
+      data: {
+        labels: [...histLabels, ...foreLabels],
+        datasets: [
+          {
+            label: 'Histórico',
+            data: [...histData, null, null, null],
+            borderColor: BLUE, backgroundColor: BLUE + '22',
+            tension: 0.3, fill: true, pointRadius: 2,
+          },
+          {
+            label: 'Pronóstico',
+            data: [...Array(histData.length - 1).fill(null), histData[histData.length - 1], ...foreData],
+            borderColor: RUST, backgroundColor: RUST + '33',
+            borderDash: [6, 4], tension: 0.3, fill: false, pointRadius: 4,
+          },
+        ],
+      },
+      options: {
+        ...baseOpts(),
+        plugins: {
+          legend: { labels: { color: GRAY } },
+          tooltip: {
+            callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString() + ' homicidios' },
+          },
+        },
+        scales: {
+          x: { ticks: { color: GRAY, maxTicksLimit: 12, maxRotation: 45 }, grid: { color: '#37637022' } },
+          y: { ticks: { color: GRAY }, grid: { color: '#37637022' },
+               title: { display: true, text: 'Homicidios / mes', color: GRAY } },
+        },
+      },
+    });
+  }
+
+  /* ── Desglose de fases ── */
+  const FASES_LABELS_SPARK = {
+    spark_startup: 'Inicio JVM (SparkSession)',
+    cache_fill:    'Lectura Parquet + Caché',
+    groupby_depto: 'groupBy Departamento/Año',
+    groupby_arma:  'groupBy Arma/Zona (benchmark)',
+    groupby_tend:  'groupBy Tendencia Mensual',
+    groupby_muni:  'groupBy Top Municipios',
+    pandas_load:   'Carga Pandas (benchmark)',
+    pandas_query:  'groupBy Pandas (benchmark)',
+    ml_pipeline:   'Entrenamiento GBTRegressor (fit + pronóstico 3 meses)',
+    total:         'TOTAL',
+  };
+  const FASES_LABELS_PANDAS = {
+    parquet_load:  'Carga Parquet (DuckDB)',
+    limpieza:      'Limpieza / Transformación',
+    groupby_depto: 'groupBy Departamento/Año',
+    groupby_arma:  'groupBy Arma/Zona',
+    groupby_tend:  'groupBy Tendencia Mensual',
+    groupby_muni:  'groupBy Top Municipios',
+    total:         'TOTAL',
+  };
+
+  function renderFases(fases, engine) {
+    const wrap = document.getElementById('tiempos-wrap');
+    if (!fases) { wrap.innerHTML = ''; return; }
+    const labels = engine === 'spark' ? FASES_LABELS_SPARK : FASES_LABELS_PANDAS;
+    const maxT = fases.total || 1;
+    const rows = Object.entries(fases).map(([k, v]) => {
+      const label = labels[k] || k;
+      const pct = Math.round((v / maxT) * 100);
+      const isTotal = k === 'total';
+      return `<tr${isTotal ? ' class="fases-total"' : ''}>
+        <td>${label}</td>
+        <td class="num">${v.toFixed(3)} s</td>
+        <td><div class="fases-bar" style="width:${Math.max(pct, 1)}%"></div></td>
+      </tr>`;
+    }).join('');
+    wrap.innerHTML = `<div class="query-wrap">
+      <table class="query-table fases-table">
+        <thead><tr><th>Fase</th><th>Tiempo</th><th>Proporción</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }
+
+  /* ── SSE stream ── */
+  const errMsg = '<p class="query-empty">Error al cargar los datos.</p>';
+  let _engine = 'pandas-fallback';
+
+  const source = new EventSource('/nivel-4/api/stream');
+
+  source.onmessage = function(e) {
+    const ev = JSON.parse(e.data);
+
+    if (ev.phase === 'engine') {
+      _engine = ev.engine;
+      const badge = document.getElementById('engine-badge');
+      const isSpark = ev.engine === 'spark';
+      badge.textContent = isSpark ? 'Apache Spark' : 'Pandas Fallback';
+      badge.className = 'engine-badge engine-badge--' + (isSpark ? 'spark' : 'fallback');
+
+    } else if (['por_departamento_anio','arma_zona_top10','tendencia_mensual','top_municipios'].includes(ev.phase)) {
+      const c = CONSULTAS.find(c => c.id === ev.phase);
+      if (c) {
+        renderTable(c.id, ev.rows, c.columnas, c.campos);
+        renderTiming(c.id, ev.tiempo, _engine);
+      }
+      if (ev.phase === 'tendencia_mensual') buildTendenciaChart(ev.rows);
+      if (ev.phase === 'arma_zona_top10') {
+        buildArmaZonaChart(ev.rows);
+        document.querySelectorAll('.viz-row.loading').forEach(r => r.classList.remove('loading'));
+      }
+
+    } else if (ev.phase === 'benchmark') {
+      if (ev.spark_seconds != null) buildBenchChart(ev.spark_seconds, ev.pandas_seconds);
+      else buildBenchPandasOnly(ev.pandas_seconds);
+
+    } else if (ev.phase === 'ml') {
+      renderML(ev.ml);
+      renderForecastChart(ev.ml);
+
+    } else if (ev.phase === 'done') {
+      renderFases(ev.fases, _engine);
+      source.close();
+
+    } else if (ev.phase === 'error') {
+      document.querySelectorAll('[id^="data-wrap-"], #bench-wrap, #ml-wrap, #conf-wrap, #tiempos-wrap')
+        .forEach(w => { w.innerHTML = errMsg; });
+      source.close();
+    }
+  };
+
+  source.onerror = function() {
+    document.querySelectorAll('[id^="data-wrap-"], #bench-wrap, #ml-wrap, #conf-wrap, #tiempos-wrap')
+      .forEach(w => { w.innerHTML = errMsg; });
+    source.close();
+  };
 </script>
 {% endblock %}

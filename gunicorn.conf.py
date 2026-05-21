@@ -10,3 +10,4 @@ workers = int(os.environ.get("WEB_CONCURRENCY", 2))
 accesslog = "-"
 errorlog = "-"
 loglevel = "info"
+timeout = 300

@@ -392,5 +392,5 @@ def stream_pipeline():
         yield from _stream_spark(t0_total)
     except Exception as exc:
         import logging
-        logging.getLogger(__name__).warning("Spark stream failed: %s", exc)
-        yield {"phase": "error", "message": str(exc)}
+        logging.getLogger(__name__).warning("Spark failed, falling back to pandas: %s", exc)
+        yield from _stream_pandas(t0_total)

@@ -15,3 +15,5 @@ services:
         sync: false
       - key: WEB_CONCURRENCY
         value: "1"
+      - key: STATIC_RESULTS
+        value: "1"
